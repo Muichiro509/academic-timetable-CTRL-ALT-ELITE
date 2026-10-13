@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Schedulr — Academic Timetable Generator</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<!-- ── Top bar ─────────────────────────────────────────────── -->
+<header class="topbar">
+  <div class="brand">
+    <div class="logo">S</div>
+    <div>
+      <strong>Schedulr</strong>
+      <small>Academic Timetable Generator</small>
+    </div>
+  </div>
+  <nav class="tabs" role="tablist">
+    <button class="tab active" data-tab="input"     role="tab">① Input</button>
+    <button class="tab"        data-tab="timetable" role="tab">② Timetable</button>
+    <button class="tab"        data-tab="conflicts" role="tab">③ Conflicts &amp; Stats</button>
+  </nav>
+  <div class="topbar-actions">
+    <button id="btn-load"     class="secondary sm">Load sample</button>
+    <button id="btn-validate" class="secondary sm">Validate</button>
+    <button id="btn-generate" class="primary  sm">Generate ↗</button>
+  </div>
+</header>
+
+<!-- ── Status banner ────────────────────────────────────────── -->
+<div id="status-bar" class="status-bar hidden"></div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!--  TAB 1 — Input Data                                       -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<main id="tab-input" class="tab-panel active">
+
+  <div class="page-head">
+    <div>
+      <h1>Department &amp; Scheduling Data</h1>
+      <p class="muted">Fill in every section, then click <strong>Generate</strong>.</p>
+    </div>
+  </div>
+
+  <!-- Working hours & days ---------------------------------- -->
+  <section class="card">
+    <h2>University Working Hours &amp; Days</h2>
+    <div class="row-3">
+      <label>Start time<input type="time" id="wh-start" value="09:00"></label>
+      <label>End time<input type="time" id="wh-end"   value="17:00"></label>
+    </div>
+    <p class="field-label" style="margin-top:14px">Working days</p>
+    <div id="days-grid" class="chip-grid"></div>
+  </section>
+
+  <!-- Time slots -------------------------------------------- -->
+  <section class="card">
+    <div class="card-head">
+      <h2>Time Slots</h2>
+      <button class="secondary sm" id="btn-add-slot">+ Add slot</button>
+    </div>
+    <p class="muted small">Mark a slot as <em>Lunch break</em> to exclude it from scheduling.</p>
+    <div id="slots-list" class="item-list"></div>
+  </section>
+
+  <!-- Rooms ------------------------------------------------- -->
+  <section class="card">
+    <div class="card-head">
+      <h2>Classrooms &amp; Laboratories</h2>
+      <button class="secondary sm" id="btn-add-room">+ Add room</button>
+    </div>
+    <div id="rooms-list" class="item-list"></div>
+  </section>
+
+  <!-- Classes & Batches ------------------------------------- -->
+  <section class="card">
+    <div class="card-head">
+      <h2>Classes / Sections &amp; Practical Batches</h2>
+      <button class="secondary sm" id="btn-add-class">+ Add class</button>
+    </div>
+    <p class="muted small">Expand a class to add sub-groups (batches) for split practicals.</p>
+    <div id="classes-list" class="item-list"></div>
+  </section>
+
+  <!-- Subjects ---------------------------------------------- -->
+  <section class="card">
+    <div class="card-head">
+      <h2>Subjects &amp; Teaching Requirements</h2>
+      <button class="secondary sm" id="btn-add-subject">+ Add subject</button>
+    </div>
+    <p class="muted small">
+      Set <em>Duration &gt; 1</em> for consecutive lab sessions.
+      Assign a <em>Batch</em> for split practicals.
+      Use <em>Fixed session</em> to pin a pre-assigned slot.
+    </p>
+    <div id="subjects-list" class="item-list"></div>
+  </section>
+
+  <!-- Faculty availability ---------------------------------- -->
+  <section class="card">
+    <div class="card-head">
+      <h2>Faculty Availability</h2>
+      <div class="actions">
+        <button class="secondary sm" id="btn-add-unavail">+ Block slot</button>
+        <button class="secondary sm" id="btn-add-range">+ Add available range</button>
+        <button class="secondary sm" id="btn-add-cap">+ Daily cap</button>
+      </div>
+    </div>
+    <p class="muted small">
+      <strong>Block slot</strong> — mark a specific day + slot as unavailable.
+      <strong>Available range</strong> — restrict a faculty to a time window on a day.
+      <strong>Daily cap</strong> — maximum periods per day for a faculty.
+    </p>
+    <div id="unavail-list"  class="item-list" style="margin-bottom:10px"></div>
+    <div id="avail-range-list" class="item-list" style="margin-bottom:10px"></div>
+    <div id="fac-cap-list"  class="item-list"></div>
+  </section>
+
+</main>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!--  TAB 2 — Timetable                                        -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<main id="tab-timetable" class="tab-panel">
+
+  <!-- Toolbar -->
+  <div class="page-head">
+    <div>
+      <h1>Generated Timetable</h1>
+      <p class="muted">Review, manually adjust, lock sessions, then save draft or publish.</p>
+    </div>
+    <div class="actions">
+      <div class="view-group">
+        <button class="view-btn active" data-view="programme">Programme</button>
+        <button class="view-btn"        data-view="faculty">Faculty</button>
+        <button class="view-btn"        data-view="room">Room</button>
+      </div>
+      <label class="field-label" style="margin:0">Filter:
+        <select id="class-filter"><option value="all">All</option></select>
+      </label>
+      <button id="btn-export"     class="secondary sm" disabled>Export CSV</button>
+      <button id="btn-print"      class="secondary sm" disabled>Print</button>
+      <button id="btn-save-draft" class="secondary sm" disabled>Save draft</button>
+      <button id="btn-publish"    class="primary sm"   disabled>Publish ↗</button>
+    </div>
+  </div>
+
+  <!-- Publish badge -->
+  <div id="publish-badge" class="publish-badge hidden">
+    <span class="badge-dot"></span> Published
+    <span id="publish-time" class="muted small"></span>
+  </div>
+
+  <!-- Stats strip -->
+  <div class="stats-strip">
+    <div class="stat-card"><span class="stat-val" id="st-scheduled">—</span><span class="stat-lbl">Scheduled</span></div>
+    <div class="stat-card"><span class="stat-val" id="st-unscheduled">—</span><span class="stat-lbl">Unscheduled</span></div>
+    <div class="stat-card"><span class="stat-val" id="st-total">—</span><span class="stat-lbl">Requested</span></div>
+    <div class="stat-card"><span class="stat-val" id="st-subjects">—</span><span class="stat-lbl">Subjects</span></div>
+    <div class="stat-card"><span class="stat-val" id="st-rooms">—</span><span class="stat-lbl">Rooms</span></div>
+  </div>
+
+  <!-- Grid -->
+  <section class="card no-pad">
+    <div id="tt-grid" class="tt-grid-placeholder">
+      <p class="muted center">Generate a timetable to see the grid here.</p>
+    </div>
+  </section>
+
+  <!-- Session list -->
+  <section class="card" style="margin-top:18px">
+    <div class="card-head">
+      <h2>Session list</h2>
+      <span class="muted small">Click a row to adjust or lock/unlock.</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th></th>
+            <th>Day</th><th>Time</th><th>Subject</th>
+            <th>Class / Batch</th><th>Faculty</th><th>Room</th><th>Type</th>
+          </tr>
+        </thead>
+        <tbody id="tt-rows">
+          <tr><td colspan="8" class="empty">Generate a timetable first.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!--  TAB 3 — Conflicts & Stats                                -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<main id="tab-conflicts" class="tab-panel">
+
+  <div class="page-head">
+    <h1>Conflicts &amp; Load Statistics</h1>
+    <p class="muted">Unscheduled sessions with specific reasons, plus faculty and class workload.</p>
+  </div>
+
+  <section class="card">
+    <div class="card-head"><h2>Scheduling issues</h2></div>
+    <ul id="issues-list" class="issues-list">
+      <li class="muted">No results yet — generate a timetable first.</li>
+    </ul>
+  </section>
+
+  <div class="two-col">
+    <section class="card">
+      <h2>Faculty load (periods/week)</h2>
+      <div id="faculty-stats"><p class="muted">—</p></div>
+    </section>
+    <section class="card">
+      <h2>Class load (periods/week)</h2>
+      <div id="class-stats"><p class="muted">—</p></div>
+    </section>
+  </div>
+
+</main>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!--  Adjust modal                                             -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div id="modal-overlay" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="modal-title">Adjust session</h2>
+      <button class="secondary sm" id="modal-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="muted small" style="margin-bottom:14px">
+        Move this session to a new day / slot / room. Changes are validated before saving.
+      </p>
+      <div class="form-grid">
+        <label>Day
+          <select id="adj-day"></select>
+        </label>
+        <label>Start slot
+          <select id="adj-slot"></select>
+        </label>
+        <label>Room
+          <select id="adj-room"></select>
+        </label>
+      </div>
+      <div id="adj-conflicts" class="adj-conflicts hidden"></div>
+    </div>
+    <div class="modal-foot">
+      <label class="lock-toggle">
+        <input type="checkbox" id="adj-lock"> Lock this session (exclude from re-generation)
+      </label>
+      <div class="actions">
+        <button class="secondary sm" id="modal-cancel">Cancel</button>
+        <button class="primary  sm" id="modal-save">Save &amp; validate</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>
